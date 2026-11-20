@@ -1,112 +1,231 @@
 ---
 import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
-import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
-import Header from '../../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import { CATEGORY_LABELS, SITE_DESCRIPTION, SITE_TITLE, sitePath, visiblePosts } from '../../consts';
 
-const posts = (await getCollection('blog')).sort(
+const posts = visiblePosts(await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
+const categories = Object.entries(CATEGORY_LABELS);
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-		<style>
-			main {
-				width: 960px;
-			}
-			ul {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 2rem;
-				list-style-type: none;
-				margin: 0;
-				padding: 0;
-			}
-			ul li {
-				width: calc(50% - 1rem);
-			}
-			ul li * {
-				text-decoration: none;
-				transition: 0.2s ease;
-			}
-			ul li:first-child {
-				width: 100%;
-				margin-bottom: 1rem;
-				text-align: center;
-			}
-			ul li:first-child img {
-				width: 100%;
-			}
-			ul li:first-child .title {
-				font-size: 2.369rem;
-			}
-			ul li img {
-				margin-bottom: 0.5rem;
-				border-radius: 12px;
-			}
-			ul li a {
-				display: block;
-			}
-			.title {
-				margin: 0;
-				color: rgb(var(--black));
-				line-height: 1;
-			}
-			.date {
-				margin: 0;
-				color: rgb(var(--gray));
-			}
-			ul li a:hover h4,
-			ul li a:hover .date {
-				color: rgb(var(--accent));
-			}
-			ul a:hover img {
-				box-shadow: var(--box-shadow);
-			}
-			@media (max-width: 720px) {
-				ul {
-					gap: 0.5em;
-				}
-				ul li {
-					width: 100%;
-					text-align: center;
-				}
-				ul li:first-child {
-					margin-bottom: 0;
-				}
-				ul li:first-child .title {
-					font-size: 1.563em;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<Header />
-		<main>
-			<section>
-				<ul>
-					{posts.map((post) => (
-						<li>
-							<a href={`/blog/${post.id}/`}>
-								{post.data.heroImage && (
-									<Image width={720} height={360} src={post.data.heroImage} alt="" />
-								)}
-								<h4 class="title">{post.data.title}</h4>
-								<p class="date">
+<BaseLayout title={`文章｜${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main id="main-content">
+		<header class="page-heading">
+			<p class="eyebrow">Writing archive</p>
+			<h1>文章</h1>
+			<p>記錄正在學習的事，也整理值得回頭看的想法。</p>
+		</header>
+
+		<div class="filters" data-filter-controls hidden role="group" aria-label="依主題篩選文章">
+			<button type="button" data-category="all" aria-pressed="true">全部</button>
+			{categories.map(([key, label]) => (
+				<button type="button" data-category={key} aria-pressed="false">{label}</button>
+			))}
+		</div>
+		<p class="result-count" data-result-count aria-live="polite"></p>
+
+		{posts.length ? (
+			<ul class="post-list">
+				{posts.map((post) => (
+					<li class="post-card" data-post-category={post.data.category}>
+						<article class:list={{ 'has-image': Boolean(post.data.heroImage) }}>
+							{post.data.heroImage && (
+								<a class="post-image" href={sitePath(`/blog/${post.id}/`)} tabindex="-1" aria-hidden="true">
+									<Image src={post.data.heroImage} alt="" width={720} height={400} />
+								</a>
+							)}
+							<div class="post-copy">
+								<div class="post-meta">
+									<span class="category">{CATEGORY_LABELS[post.data.category]}</span>
 									<FormattedDate date={post.data.pubDate} />
-								</p>
-							</a>
-						</li>
-					))}
-				</ul>
-			</section>
-		</main>
-		<Footer />
-	</body>
-</html>
+									{post.data.draft && <span class="draft-label">本機草稿</span>}
+								</div>
+								<h2 class="post-title"><a href={sitePath(`/blog/${post.id}/`)}>{post.data.title}</a></h2>
+								<p>{post.data.description}</p>
+							</div>
+						</article>
+					</li>
+				))}
+			</ul>
+		) : (
+			<div class="empty-state">
+				<p class="eyebrow">Coming soon</p>
+				<h2>第一篇文章正在準備中</h2>
+				<p>文章發布後會出現在這裡。你也可以先從關於頁認識這個空間。</p>
+				<a class="text-link" href={sitePath('/about/')}>關於 Sihle’s Studio <span aria-hidden="true">↗</span></a>
+			</div>
+		)}
+	</main>
+</BaseLayout>
+
+<script>
+	const controls = document.querySelector<HTMLElement>('[data-filter-controls]');
+	const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-category]')];
+	const cards = [...document.querySelectorAll<HTMLElement>('[data-post-category]')];
+	const resultCount = document.querySelector<HTMLElement>('[data-result-count]');
+	const labels: Record<string, string> = {
+		'website-development': '網站開發',
+		finance: '投資理財',
+		'daily-life': '生活日常',
+	};
+
+	if (controls && buttons.length && cards.length) {
+		controls.hidden = false;
+		const params = new URLSearchParams(window.location.search);
+		const initialCategory = params.get('category') || 'all';
+
+		const applyFilter = (category: string, updateUrl = false) => {
+			const selected = labels[category] ? category : 'all';
+			let visibleCount = 0;
+			for (const card of cards) {
+				const isVisible = selected === 'all' || card.dataset.postCategory === selected;
+				card.hidden = !isVisible;
+				if (isVisible) visibleCount += 1;
+			}
+			for (const button of buttons) {
+				button.setAttribute('aria-pressed', String(button.dataset.category === selected));
+			}
+			if (resultCount) {
+				resultCount.textContent = selected === 'all'
+					? `共 ${visibleCount} 篇文章`
+					: `${labels[selected]}：${visibleCount} 篇文章`;
+			}
+			if (updateUrl) {
+				const url = new URL(window.location.href);
+				if (selected === 'all') url.searchParams.delete('category');
+				else url.searchParams.set('category', selected);
+				window.history.pushState({}, '', url);
+			}
+		};
+
+		for (const button of buttons) {
+			button.addEventListener('click', () => applyFilter(button.dataset.category || 'all', true));
+		}
+		applyFilter(initialCategory);
+		window.addEventListener('popstate', () => {
+			const selected = new URLSearchParams(window.location.search).get('category') || 'all';
+			applyFilter(selected);
+		});
+	}
+</script>
+
+<style>
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.55rem;
+		margin-bottom: 0.9rem;
+	}
+	.filters button {
+		padding: 0.48rem 0.9rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--muted);
+		font: inherit;
+		font-size: 0.84rem;
+		cursor: pointer;
+	}
+	.filters button[aria-pressed='true'] {
+		border-color: var(--accent);
+		background: var(--accent-soft);
+		color: var(--accent-strong);
+		font-weight: 700;
+	}
+	.result-count {
+		min-height: 1.5em;
+		margin: 0 0 1.2rem;
+		color: var(--muted);
+		font-size: 0.82rem;
+	}
+	.post-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.post-card {
+		padding: 1.4rem 0;
+		border-top: 1px solid var(--border);
+	}
+	.post-card[hidden] {
+		display: none;
+	}
+	.post-card article {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		align-items: center;
+		gap: 1.5rem;
+	}
+	.post-card article.has-image {
+		grid-template-columns: minmax(150px, 0.72fr) 1.5fr;
+	}
+	.post-image img {
+		display: block;
+		width: 100%;
+		aspect-ratio: 16 / 10;
+		border-radius: 10px;
+		object-fit: cover;
+	}
+	.post-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+		margin-bottom: 0.65rem;
+		color: var(--muted);
+		font-size: 0.79rem;
+	}
+	.category {
+		color: var(--accent-strong);
+		font-weight: 700;
+	}
+	.draft-label {
+		padding: 0.1rem 0.45rem;
+		border-radius: 4px;
+		background: var(--surface-soft);
+		font-size: 0.7rem;
+	}
+	.post-title {
+		font-size: clamp(1.15rem, 3vw, 1.45rem);
+	}
+	.post-title a {
+		color: var(--text);
+		text-decoration: none;
+	}
+	.post-title a:hover {
+		color: var(--accent-strong);
+	}
+	.post-copy > p {
+		margin: 0.55rem 0 0;
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+	.empty-state {
+		padding: 2rem;
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		background: var(--surface);
+	}
+	.empty-state h2 {
+		font-size: 1.45rem;
+	}
+	.empty-state > p:not(.eyebrow) {
+		margin: 0.75rem 0 1rem;
+		color: var(--muted);
+	}
+	.text-link {
+		font-weight: 700;
+	}
+	@media (max-width: 620px) {
+		.post-card article {
+			grid-template-columns: 1fr;
+			gap: 0.8rem;
+		}
+		.post-image img {
+			max-height: 240px;
+		}
+	}
+</style>

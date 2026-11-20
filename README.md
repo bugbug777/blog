@@ -1,63 +1,50 @@
-# Astro Starter Kit: Blog
+# Sihle’s Studio
+
+以繁體中文記錄網站開發、投資理財與生活日常的個人部落格。
+
+## 本機開發
+
+需求：Node.js `22.23.4` 或更新版本。
 
 ```sh
-npm create astro@latest -- --template blog
+npm ci
+PRIVATE_DRAFTS_DIR=../sihle-studio-drafts/content npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+開發伺服器以背景模式執行，使用 `astro dev status`、`astro dev logs` 與 `astro dev stop` 管理。開發模式可瀏覽私人草稿；正式建置固定從公開專案的 `src/content/blog/` 讀取，確保私人草稿不會進入正式網站。
 
-Features:
+## 撰寫文章
 
-- ✅ Minimal styling (make it your own!)
-- ✅ 100/100 Lighthouse performance
-- ✅ SEO-friendly with canonical URLs and Open Graph data
-- ✅ Sitemap support
-- ✅ RSS Feed support
-- ✅ Markdown & MDX support
+文章草稿先放在私人草稿儲存庫，核准發布後才複製到公開網站專案的 `src/content/blog/`。檔名會成為文章英文字 slug。Frontmatter 範例：
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-├── public/
-├── src/
-│   ├── assets/
-│   ├── components/
-│   ├── content/
-│   ├── layouts/
-│   └── pages/
-├── astro.config.mjs
-├── README.md
-├── package.json
-└── tsconfig.json
+```yaml
+---
+title: '文章標題'
+description: '簡短摘要'
+pubDate: '2026-11-18'
+category: website-development
+draft: false
+---
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+`category` 可使用 `website-development`、`finance` 或 `daily-life`。公開網站儲存庫只放已核准、準備發布的內容；不要把私人草稿或敏感資料提交到公開儲存庫。正式網站、RSS 與 sitemap 會排除 `draft: true` 的文章，但公開儲存庫內的原始檔仍可被任何人查看。
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+## GitHub Pages
 
-The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
+`.github/workflows/deploy.yml` 會在推送至 `main` 後建置並部署網站，也可從 Actions 頁面手動執行。GitHub 專案頁的站點網址與 repo base path 會由 workflow 依 repo 資訊推導。
 
-Any static assets, like images, can be placed in the `public/` directory.
+若設定自訂網域，請在 GitHub Pages 設定完成網域與 DNS，並於 Repository Variables 設定：
 
-## 🧞 Commands
+- `SITE_URL`：完整網站網址，例如 `https://example.com`
+- `BASE_PATH`：自訂網域使用 `/`
+- `PUBLIC_GA4_ID`：GA4 Measurement ID（例如 `G-XXXXXXXXXX`）；未設定時網站不顯示同意提示，也不載入 Analytics。此值是公開網站識別碼，不是密鑰。
+- `PAGES_DEPLOYMENT_ENABLED`：只有上線門檻全部完成後才設為 `true`；未啟用時，推送 `main` 不會部署正式網站。
 
-All commands are run from the root of the project, from a terminal:
+正式網域已購買為 `sihle.cc`，預定使用 `https://sihle.cc/`。GA4 只會在訪客同意後載入；建立 GA4 資源後，將 Measurement ID 設為 GitHub Repository Variable `PUBLIC_GA4_ID`，並確認隱私權說明及同意介面設定。Cloudflare CSP 最終政策需允許同意後載入的 Google tag 資源。
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+## 常用指令
 
-## 👀 Want to learn more?
-
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## Credit
-
-This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
+```sh
+npm run build
+npm run preview
+```

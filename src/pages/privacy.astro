@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_TITLE } from '../consts';
+
+const hasAnalytics = Boolean(import.meta.env.PUBLIC_GA4_ID?.trim());
+---
+
+<BaseLayout
+	title={`隱私權說明｜${SITE_TITLE}`}
+	description="Sihle’s Studio 網站資料與隱私權說明。"
+>
+	<main id="main-content">
+		<header class="page-heading">
+			<p class="eyebrow">Privacy</p>
+			<h1>隱私權說明</h1>
+			<p>最後更新：2026-11-19</p>
+		</header>
+		<div class="prose">
+			<p>
+				{SITE_TITLE} 由 Sihle 經營。本網站不提供留言、訂閱或站內聯絡表單；如果你透過 Email 聯絡我，郵件內容會由你使用的郵件服務傳送。
+			</p>
+			<h2>必要的瀏覽器儲存</h2>
+			<p>
+				網站會在你的瀏覽器 localStorage 儲存明暗模式偏好。若 Google Analytics 同意功能已啟用，你的 Analytics 選擇也會儲存六個月；必要偏好一律啟用，Analytics 由你選擇是否允許。
+			</p>
+			<h2>Google Analytics</h2>
+			<p>
+				{hasAnalytics
+					? '只有在你選擇同意後，本網站才會載入 Google Analytics，用於查看基本訪客與文章瀏覽趨勢。你可以選擇拒絕，也可以透過頁尾的 Analytics 設定入口隨時改變選擇。拒絕或撤回同意後，網站不會再向 Google Analytics 傳送後續瀏覽資料。'
+					: '目前尚未設定 Google Analytics Measurement ID，因此不載入 Google Analytics。正式啟用時，網站會先提供同意／拒絕／設定選項，只有在你同意後才載入分析程式。'}
+			</p>
+			<h2>搜尋成效與網站服務</h2>
+			<p>
+				網站經由 GitHub Pages 與 Cloudflare 提供內容。網站經營者預計使用 Google Search Console 查看搜尋曝光與點擊趨勢；它供網站經營者查看搜尋成效，不作為本網站的訪客分析程式。這些服務可能依各自政策處理提供服務所需的技術資料。
+			</p>
+			<h2>聯絡方式</h2>
+			<p>
+				若對本說明或網站資料使用方式有疑問，請寄信至 <a href="mailto:yb0x5rjoz@mozmail.com">yb0x5rjoz@mozmail.com</a>。
+			</p>
+		</div>
+	</main>
+</BaseLayout>
+
+<style>
+	.prose {
+		font-size: 1.02rem;
+	}
+	.prose h2 {
+		font-size: 1.4rem;
+	}
+</style>

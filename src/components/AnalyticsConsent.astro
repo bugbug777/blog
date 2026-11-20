@@ -1,0 +1,267 @@
+---
+interface Props {
+	measurementId: string;
+}
+
+const { measurementId } = Astro.props;
+import { sitePath } from '../consts';
+---
+
+<aside class="consent-banner" data-consent-banner data-ga-id={measurementId} hidden aria-label="Analytics 偏好設定">
+	<div class="consent-copy">
+		<p class="consent-title">協助我了解網站內容的閱讀情況</p>
+		<p>
+			同意後才會載入 Google Analytics，僅用於基本訪客與文章瀏覽趨勢。你可以選擇拒絕，或在頁尾重新調整偏好。詳情請見
+			<a href={sitePath('/privacy/')}>隱私權說明</a>。
+		</p>
+	</div>
+	<div class="consent-actions">
+		<button type="button" class="consent-accept" data-consent-accept>同意</button>
+		<button type="button" data-consent-reject>拒絕</button>
+		<button type="button" data-consent-open-settings>設定</button>
+	</div>
+</aside>
+
+<dialog class="consent-dialog" data-consent-dialog aria-labelledby="consent-dialog-title">
+	<div class="consent-dialog-content">
+		<p class="eyebrow">Privacy preferences</p>
+		<h2 id="consent-dialog-title">儲存偏好設定</h2>
+		<p>必要儲存項目一律啟用，用來記住網站基本偏好與你的 Analytics 選擇。</p>
+		<label class="analytics-option">
+			<input type="checkbox" data-analytics-toggle />
+			<span>
+				<strong>Google Analytics</strong>
+				<span>允許載入 Google Analytics，以了解基本訪客與文章瀏覽趨勢。</span>
+			</span>
+		</label>
+		<div class="consent-actions">
+			<button type="button" class="consent-accept" data-consent-save>儲存偏好</button>
+			<button type="button" data-consent-close>取消</button>
+		</div>
+	</div>
+</dialog>
+
+<script>
+	type SavedPreference = { analytics: boolean; expiresAt: number };
+	type AnalyticsWindow = Window & {
+		dataLayer?: unknown[][];
+		gtag?: (...args: unknown[]) => void;
+	};
+
+	const preferenceKey = 'sihles-studio-analytics-consent';
+	const analyticsWindow = window as AnalyticsWindow;
+	const banner = document.querySelector<HTMLElement>('[data-consent-banner]');
+	const dialog = document.querySelector<HTMLDialogElement>('[data-consent-dialog]');
+	const analyticsToggle = document.querySelector<HTMLInputElement>('[data-analytics-toggle]');
+	const measurementId = banner?.dataset.gaId;
+	if (!measurementId) throw new Error('Google Analytics measurement ID is missing.');
+	let loaded = false;
+
+	const readPreference = (): SavedPreference | undefined => {
+		try {
+			const stored = localStorage.getItem(preferenceKey);
+			if (!stored) return undefined;
+
+			const preference = JSON.parse(stored) as SavedPreference;
+			if (typeof preference.analytics !== 'boolean' || Date.now() >= preference.expiresAt) {
+				localStorage.removeItem(preferenceKey);
+				return undefined;
+			}
+			return preference;
+		} catch {
+			return undefined;
+		}
+	};
+
+	const savePreference = (analytics: boolean) => {
+		try {
+			const expiresAt = new Date();
+			expiresAt.setMonth(expiresAt.getMonth() + 6);
+			localStorage.setItem(
+				preferenceKey,
+				JSON.stringify({ analytics, expiresAt: expiresAt.getTime() }),
+			);
+		} catch {
+			// A choice still applies for this page view if local storage is unavailable.
+		}
+	};
+
+	const loadAnalytics = () => {
+		(analyticsWindow as Window & Record<string, unknown>)[`ga-disable-${measurementId}`] = false;
+		if (loaded) {
+			analyticsWindow.gtag?.('consent', 'update', { analytics_storage: 'granted' });
+			return;
+		}
+		loaded = true;
+		analyticsWindow.dataLayer = analyticsWindow.dataLayer || [];
+		analyticsWindow.gtag = (...args: unknown[]) => analyticsWindow.dataLayer?.push(args);
+		analyticsWindow.gtag('js', new Date());
+		analyticsWindow.gtag('config', measurementId);
+
+		const script = document.createElement('script');
+		script.async = true;
+		script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+		script.referrerPolicy = 'strict-origin-when-cross-origin';
+		document.head.append(script);
+	};
+
+	const clearAnalyticsCookies = () => {
+		for (const cookie of document.cookie.split(';')) {
+			const name = cookie.trim().split('=')[0];
+			if (name === '_ga' || name.startsWith('_ga_')) {
+				document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax; Secure`;
+			}
+		}
+	};
+
+	const applyPreference = (analytics: boolean) => {
+		savePreference(analytics);
+		if (analytics) {
+			loadAnalytics();
+		} else {
+			(analyticsWindow as Window & Record<string, unknown>)[`ga-disable-${measurementId}`] = true;
+			analyticsWindow.gtag?.('consent', 'update', { analytics_storage: 'denied' });
+			clearAnalyticsCookies();
+		}
+		banner?.setAttribute('hidden', '');
+		if (dialog?.open) dialog.close();
+	};
+
+	const openSettings = () => {
+		if (!dialog || !analyticsToggle) return;
+		analyticsToggle.checked = readPreference()?.analytics ?? false;
+		if (!dialog.open) dialog.showModal();
+	};
+
+	const preference = readPreference();
+	if (preference?.analytics) loadAnalytics();
+	if (!preference) banner?.removeAttribute('hidden');
+
+	document.querySelector('[data-consent-accept]')?.addEventListener('click', () => applyPreference(true));
+	document.querySelector('[data-consent-reject]')?.addEventListener('click', () => applyPreference(false));
+	document.querySelector('[data-consent-open-settings]')?.addEventListener('click', openSettings);
+	document.querySelector('[data-consent-save]')?.addEventListener('click', () => {
+		applyPreference(analyticsToggle?.checked ?? false);
+	});
+	document.querySelector('[data-consent-close]')?.addEventListener('click', () => dialog?.close());
+	document.querySelectorAll('[data-open-analytics-settings]').forEach((button) => {
+		button.addEventListener('click', openSettings);
+	});
+</script>
+
+<style>
+	.consent-banner {
+		position: fixed;
+		z-index: 100;
+		right: max(1rem, calc((100vw - 1120px) / 2));
+		bottom: 1rem;
+		left: max(1rem, calc((100vw - 1120px) / 2));
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1.5rem;
+		padding: 1rem 1.2rem;
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		background: var(--surface);
+		box-shadow: var(--shadow);
+	}
+	.consent-banner[hidden] {
+		display: none;
+	}
+	.consent-copy {
+		max-width: 48rem;
+	}
+	.consent-title {
+		margin: 0 0 0.2rem;
+		font-weight: 700;
+	}
+	.consent-copy p:last-child {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.88rem;
+	}
+	.consent-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.consent-actions button {
+		min-height: 42px;
+		padding: 0.5rem 0.85rem;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		background: var(--surface);
+		color: var(--text);
+		font: inherit;
+		font-size: 0.88rem;
+		cursor: pointer;
+	}
+	.consent-actions button:hover {
+		border-color: var(--accent);
+	}
+	.consent-actions .consent-accept {
+		border-color: var(--accent-strong);
+		background: var(--accent-strong);
+		color: var(--page);
+	}
+	.consent-dialog {
+		width: min(100% - 2rem, 520px);
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: 18px;
+		background: var(--surface);
+		color: var(--text);
+		box-shadow: var(--shadow);
+	}
+	.consent-dialog::backdrop {
+		background: rgb(16 20 18 / 48%);
+	}
+	.consent-dialog-content {
+		padding: clamp(1.3rem, 5vw, 2rem);
+	}
+	.consent-dialog-content h2 {
+		margin-bottom: 0.75rem;
+		font-size: 1.6rem;
+	}
+	.consent-dialog-content > p:not(.eyebrow) {
+		color: var(--muted);
+	}
+	.analytics-option {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		align-items: start;
+		gap: 0.8rem;
+		margin: 1.25rem 0 1.5rem;
+		padding: 1rem;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		cursor: pointer;
+	}
+	.analytics-option input {
+		width: 1.1rem;
+		height: 1.1rem;
+		margin-top: 0.25rem;
+		accent-color: var(--accent-strong);
+	}
+	.analytics-option > span,
+	.analytics-option > span > span {
+		display: block;
+	}
+	.analytics-option > span > span {
+		margin-top: 0.2rem;
+		color: var(--muted);
+		font-size: 0.88rem;
+	}
+	@media (max-width: 700px) {
+		.consent-banner {
+			align-items: stretch;
+			flex-direction: column;
+			gap: 0.85rem;
+			padding: 0.95rem;
+		}
+		.consent-actions button {
+			flex: 1;
+		}
+	}
+</style>
