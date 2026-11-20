@@ -31,7 +31,9 @@ draft: false
 
 ## GitHub Pages
 
-`.github/workflows/deploy.yml` 會在推送至 `main` 後建置並部署網站，也可從 Actions 頁面手動執行。GitHub 專案頁的站點網址與 repo base path 會由 workflow 依 repo 資訊推導。
+`.github/workflows/ci.yml` 會在針對 `main` 建立或更新 Pull Request 時執行型別檢查與正式建置。`.github/workflows/deploy.yml` 在推送至 `main` 後部署網站，但只有在 Repository Variable `PAGES_DEPLOYMENT_ENABLED` 設為 `true` 時才執行，避免上線條件未完成前發布。
+
+`main` 分支使用 PR 保護規則；合併前需檢查 CI 結果。GitHub Pages 的發布來源選擇 GitHub Actions。GitHub 專案頁的站點網址與 repo base path 會由 workflow 依 repo 資訊推導。
 
 若設定自訂網域，請在 GitHub Pages 設定完成網域與 DNS，並於 Repository Variables 設定：
 
